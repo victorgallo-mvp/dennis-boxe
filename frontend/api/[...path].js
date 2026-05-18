@@ -1,8 +1,12 @@
 module.exports = async function handler(req, res) {
-    const base = (process.env.RAILWAY_URL || '').replace(/\/$/, '');
+    let base = (process.env.RAILWAY_URL || '').trim().replace(/\/$/, '');
 
     if (!base) {
         return res.status(500).json({ error: 'RAILWAY_URL não configurado no Vercel.' });
+    }
+
+    if (!base.startsWith('http')) {
+        base = 'https://' + base;
     }
 
     const url = base + req.url;
