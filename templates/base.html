@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dennis Boxe{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+    <nav>
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">Dennis Boxe</a>
+        <ul>
+            <li><a href="{{ url_for('dashboard') }}"
+                {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Dashboard</a></li>
+            <li><a href="{{ url_for('alunos') }}"
+                {% if 'aluno' in (request.endpoint or '') %}class="active"{% endif %}>Alunos</a></li>
+            <li><a href="{{ url_for('planos') }}"
+                {% if 'plano' in (request.endpoint or '') %}class="active"{% endif %}>Planos</a></li>
+            <li><a href="{{ url_for('financeiro') }}"
+                {% if 'financeiro' in (request.endpoint or '') or 'despesa' in (request.endpoint or '') %}class="active"{% endif %}>Financeiro</a></li>
+        </ul>
+    </nav>
+</header>
+<main>
+    <div class="container">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for msg in messages %}
+                    <div class="alert">{{ msg }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block title %}{% if aluno %} — Editar Aluno{% else %} — Novo Aluno{% endif %}{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>{% if aluno %}Editar: {{ aluno.nome }}{% else %}Novo Aluno{% endif %}</h1>
+    <a href="{{ url_for('alunos') }}" class="btn btn-ghost">← Voltar</a>
+</div>
+
+<div class="form-card">
+    <form method="post" id="form-aluno">
+        <div class="form-grid">
+
+            <div class="form-group full">
+                <label>Nome completo *</label>
+                <input type="text" name="nome" required
+                    value="{{ aluno.nome if aluno else '' }}" placeholder="Nome do aluno">
+            </div>
+
+            <div class="form-group">
+                <label>Plano</label>
+                <select name="plano_nome" id="sel-plano" onchange="preencherValor()">
+                    <option value="">— Selecione —</option>
+                    {% for p in planos %}
+                    <option value="{{ p.nome }}"
+                        data-preco="{{ p.preco }}"
+                        {% if aluno and aluno.plano_nome and aluno.plano_nome.strip() == p.nome.strip() %}selected{% endif %}>
+                        {{ p.nome }} — R$ {{ p.preco | int }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Valor Mensal (R$)</label>
+                <input type="number" name="valor_mensal" id="inp-valor" step="0.01" min="0"
+                    value="{{ aluno.valor_mensal if aluno else '' }}" placeholder="0">
+                <div class="hint">Preenchido automaticamente ao selecionar o plano.</div>
+            </div>
+
+            <div class="form-group">
+                <label>Tipo de Plano</label>
+                <select name="tipo_plano" id="sel-tipo" onchange="calcProximo()">
+                    {% set tipo_atual = (aluno.tipo_plano or 'Mensal').strip() if aluno else 'Mensal' %}
+                    <option value="Mensal"     {% if 'Mensal' in tipo_atual and 'Semestral' not in tipo_atual and 'Trimestral' not in tipo_atual %}selected{% endif %}>Mensal</option>
+                    <option value="Trimestral" {% if 'Trimestral' in tipo_atual %}selected{% endif %}>Trimestral</option>
+                    <option value="Semestral"  {% if 'Semestral' in tipo_atual %}selected{% endif %}>Semestral</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Sistema de Pagamento</label>
+                <select name="sistema_pagamento">
+                    {% set spag = aluno.sistema_pagamento if aluno else 'PIX' %}
+                    <option value="PIX"     {% if spag == 'PIX' %}selected{% endif %}>PIX</option>
+                    <option value="Dinheiro" {% if spag == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
+                    <option value="Cartão"  {% if spag == 'Cartão' %}selected{% endif %}>Cartão</option>
+                    <option value="Outro"   {% if spag not in ('PIX','Dinheiro','Cartão') and spag %}selected{% endif %}>Outro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Último Pagamento</label>
+                <input type="date" name="ultimo_pagamento" id="inp-ultimo"
+                    value="{{ aluno.ultimo_pagamento if aluno else '' }}"
+                    onchange="calcProximo()">
+            </div>
+
+            <div class="form-group">
+                <label>Próximo Pagamento</label>
+                <input type="date" name="proximo_pagamento" id="inp-proximo"
+                    value="{{ aluno.proximo_pagamento if aluno else '' }}">
+                <div class="hint">Calculado automaticamente, ou edite manualmente.</div>
+            </div>
+
+            <div class="form-group full">
+                <label>Horários das Aulas</label>
+                <input type="text" name="horarios"
+                    value="{{ aluno.horarios if aluno else '' }}"
+                    placeholder="ex: 07:00 (Seg, Qua, Sex)">
+            </div>
+
+            <div class="form-group">
+                <label>Frequência Média (vezes/semana)</label>
+                <input type="number" name="frequencia_semana" step="0.5" min="0" max="7"
+                    value="{{ aluno.frequencia_semana if aluno else '' }}" placeholder="3">
+            </div>
+
+            <div class="form-group full">
+                <label>Observações</label>
+                <textarea name="observacoes">{{ aluno.observacoes if aluno else '' }}</textarea>
+            </div>
+
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+                {% if aluno %}Salvar alterações{% else %}Adicionar aluno{% endif %}
+            </button>
+            <a href="{{ url_for('alunos') }}" class="btn btn-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+const planosPrecos = {
+    {% for p in planos %}"{{ p.nome.strip() }}": {{ p.preco }},{% endfor %}
+};
+
+function preencherValor() {
+    const sel = document.getElementById('sel-plano');
+    const opt = sel.options[sel.selectedIndex];
+    const preco = opt.dataset.preco;
+    if (preco) document.getElementById('inp-valor').value = preco;
+    calcProximo();
+}
+
+function calcProximo() {
+    const ultimo = document.getElementById('inp-ultimo').value;
+    const tipo = document.getElementById('sel-tipo').value;
+    if (!ultimo) return;
+    const dt = new Date(ultimo + 'T00:00:00');
+    let months = 1;
+    if (tipo === 'Trimestral') months = 3;
+    if (tipo === 'Semestral') months = 6;
+    dt.setMonth(dt.getMonth() + months);
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, '0');
+    const d = String(dt.getDate()).padStart(2, '0');
+    document.getElementById('inp-proximo').value = `${y}-${m}-${d}`;
+}
+</script>
+{% endblock %}

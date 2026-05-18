@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %} — Planos{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Planos</h1>
+</div>
+
+<!-- Add plan -->
+<div class="add-panel">
+    <div class="add-panel-title">Novo Plano</div>
+    <form method="post" action="{{ url_for('plano_novo') }}">
+        <div class="inline-form">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="nome" required placeholder="ex: Boxe Coletivo 3x" style="width:220px">
+            </div>
+            <div class="form-group">
+                <label>Preço (R$/mês)</label>
+                <input type="number" name="preco" required step="0.01" min="0" placeholder="120" style="width:120px">
+            </div>
+            <div class="form-group">
+                <label>Valor por Aula (opcional)</label>
+                <input type="number" name="valor_aula" step="0.01" min="0" placeholder="25" style="width:130px">
+            </div>
+            <button type="submit" class="btn btn-primary" style="align-self:flex-end;margin-bottom:0">Adicionar</button>
+        </div>
+    </form>
+</div>
+
+<!-- Plans table -->
+{% if planos %}
+<div class="table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Plano</th>
+            <th>Preço Mensal</th>
+            <th>Valor por Aula</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in planos %}
+    <tr>
+        <td><strong>{{ p.nome }}</strong></td>
+        <td>{{ p.preco | brl }}</td>
+        <td>{{ p.valor_aula | brl if p.valor_aula else '—' }}</td>
+        <td>
+            <details style="display:inline">
+                <summary class="btn btn-sm btn-ghost" style="cursor:pointer;list-style:none">Editar</summary>
+                <div style="margin-top:10px;padding:16px;border:1px solid #e2e2e2;border-radius:6px;background:#fff">
+                    <form method="post" action="{{ url_for('plano_editar', id=p.id) }}">
+                        <div class="inline-form">
+                            <div class="form-group">
+                                <label>Nome</label>
+                                <input type="text" name="nome" value="{{ p.nome }}" required style="width:200px">
+                            </div>
+                            <div class="form-group">
+                                <label>Preço</label>
+                                <input type="number" name="preco" value="{{ p.preco }}" required step="0.01" style="width:110px">
+                            </div>
+                            <div class="form-group">
+                                <label>Valor/Aula</label>
+                                <input type="number" name="valor_aula" value="{{ p.valor_aula or '' }}" step="0.01" style="width:110px">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end">Salvar</button>
+                        </div>
+                    </form>
+                    <form method="post" action="{{ url_for('plano_deletar', id=p.id) }}" style="margin-top:10px"
+                          onsubmit="return confirm('Remover este plano?')">
+                        <button class="btn btn-danger btn-sm">Remover plano</button>
+                    </form>
+                </div>
+            </details>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty">Nenhum plano cadastrado.</div>
+{% endif %}
+
+{% endblock %}

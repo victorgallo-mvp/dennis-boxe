@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %} — Alunos{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Alunos</h1>
+    <a href="{{ url_for('aluno_novo') }}" class="btn btn-primary">+ Novo aluno</a>
+</div>
+
+<div class="toolbar">
+    <form method="get" style="display:flex;gap:8px;align-items:center;">
+        <input type="search" name="busca" value="{{ busca }}" placeholder="Buscar por nome…" autofocus>
+        {% if status_f %}<input type="hidden" name="status" value="{{ status_f }}">{% endif %}
+        <button class="btn btn-secondary" type="submit">Buscar</button>
+        {% if busca %}<a href="{{ url_for('alunos') }}" class="btn btn-ghost">Limpar</a>{% endif %}
+    </form>
+</div>
+
+<div class="filter-tabs mb-20">
+    <a href="{{ url_for('alunos', busca=busca) }}"
+       class="ftab {% if not status_f %}ftab-active{% endif %}">Todos</a>
+    <a href="{{ url_for('alunos', busca=busca, status='vencido') }}"
+       class="ftab {% if status_f == 'vencido' %}ftab-active{% endif %}">Vencidos</a>
+    <a href="{{ url_for('alunos', busca=busca, status='vence_breve') }}"
+       class="ftab {% if status_f == 'vence_breve' %}ftab-active{% endif %}">Vence em breve</a>
+    <a href="{{ url_for('alunos', busca=busca, status='vence_hoje') }}"
+       class="ftab {% if status_f == 'vence_hoje' %}ftab-active{% endif %}">Vence hoje</a>
+    <a href="{{ url_for('alunos', busca=busca, status='em_dia') }}"
+       class="ftab {% if status_f == 'em_dia' %}ftab-active{% endif %}">Em dia</a>
+    <a href="{{ url_for('alunos', busca=busca, status='indefinido') }}"
+       class="ftab {% if status_f == 'indefinido' %}ftab-active{% endif %}">Indefinido</a>
+</div>
+
+{% if alunos %}
+<div class="table-wrap">
+<table>
+    <thead>
+        <tr>
+            <th>Aluno</th>
+            <th>Plano</th>
+            <th>Tipo</th>
+            <th>Valor</th>
+            <th>Pagamento</th>
+            <th>Último Pgto</th>
+            <th>Próx. Pgto</th>
+            <th>Horários</th>
+            <th>Freq./sem</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for a in alunos %}
+        <tr>
+            <td><strong>{{ a.nome }}</strong></td>
+            <td>{{ a.plano_nome or '—' }}</td>
+            <td class="nowrap">{{ a.tipo_plano or '—' }}</td>
+            <td class="nowrap">{{ a.valor_mensal | brl }}</td>
+            <td>{{ a.sistema_pagamento or '—' }}</td>
+            <td class="nowrap">{{ a.ultimo_pagamento | datebr }}</td>
+            <td class="nowrap">{{ a.proximo_pagamento | datebr }}</td>
+            <td>{{ a.horarios or '—' }}</td>
+            <td class="text-right">{{ a.frequencia_semana | int if a.frequencia_semana else '—' }}x</td>
+            <td><span class="badge badge-{{ a.status }}">{{ a.status_label }}</span></td>
+            <td>
+                <div class="actions">
+                    <form action="{{ url_for('aluno_pagar', id=a.id) }}" method="post" class="inline">
+                        <button class="btn btn-sm btn-secondary" title="Registrar pagamento hoje">✓ Pago</button>
+                    </form>
+                    <a href="{{ url_for('aluno_editar', id=a.id) }}" class="btn btn-sm btn-ghost">Editar</a>
+                    <form action="{{ url_for('aluno_deletar', id=a.id) }}" method="post" class="inline"
+                          onsubmit="return confirm('Remover {{ a.nome }}?')">
+                        <button class="btn btn-sm btn-danger">✕</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% if a.observacoes %}
+        <tr>
+            <td></td>
+            <td colspan="10" style="padding-top:2px;padding-bottom:8px;">
+                <span class="text-muted" style="font-size:12px;">{{ a.observacoes }}</span>
+            </td>
+        </tr>
+        {% endif %}
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty">Nenhum aluno encontrado.</div>
+{% endif %}
+
+{% endblock %}

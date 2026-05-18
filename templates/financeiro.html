@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %} — Financeiro{% endblock %}
+{% block content %}
+
+<div class="page-header">
+    <h1>Financeiro</h1>
+    <form method="get" style="display:flex;gap:8px;align-items:center;">
+        <input type="month" name="mes" value="{{ mes }}" style="width:155px;padding:6px 10px;border:1px solid #ddd;border-radius:5px;font-size:13.5px;font-family:inherit;">
+        <button class="btn btn-secondary" type="submit">Filtrar</button>
+        {% set hoje_mes = hoje.strftime('%Y-%m') %}
+        {% if mes != hoje_mes %}
+        <a href="{{ url_for('financeiro') }}" class="btn btn-ghost">Mês atual</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Cards do mês selecionado -->
+<div class="fin-cards">
+    <div class="card">
+        <div class="card-label">Receita Confirmada</div>
+        <div class="card-value">{{ confirmado_mes | brl }}</div>
+        <div class="hint mt-4">Pagamentos registrados em {{ mes }}</div>
+    </div>
+    <div class="card">
+        <div class="card-label">Despesas</div>
+        <div class="card-value">{{ total_despesas | brl }}</div>
+        <div class="hint mt-4">Despesas em {{ mes }}</div>
+    </div>
+    <div class="card">
+        <div class="card-label">Saldo</div>
+        <div class="card-value">{{ saldo | brl }}</div>
+    </div>
+</div>
+
+<!-- Resumo por mês (últimos 6) -->
+<div class="section">
+    <div class="section-title">Resumo — Últimos 6 Meses</div>
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Mês</th>
+                <th class="text-right">Receita Confirmada</th>
+                <th class="text-right">Despesas</th>
+                <th class="text-right">Saldo</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for r in receita_por_mes %}
+        <tr {% if r.atual %}style="font-weight:600"{% endif %}>
+            <td>
+                {{ r.label }}
+                {% if r.atual %}<span class="text-muted" style="font-size:11px;font-weight:400;margin-left:6px">mês atual</span>{% endif %}
+            </td>
+            <td class="text-right nowrap">{{ r.receita | brl }}</td>
+            <td class="text-right nowrap">{{ r.despesas | brl }}</td>
+            <td class="text-right nowrap">{{ r.saldo | brl }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+
+<!-- Pagamentos confirmados do mês -->
+<div class="section">
+    <div class="section-title">Pagamentos Confirmados em {{ mes }} ({{ pagamentos_mes | length }})</div>
+    {% if pagamentos_mes %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Aluno</th>
+                <th>Plano</th>
+                <th>Tipo</th>
+                <th>Data</th>
+                <th class="text-right">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for p in pagamentos_mes %}
+        <tr>
+            <td>{{ p.aluno_nome }}</td>
+            <td>{{ p.plano_nome or '—' }}</td>
+            <td>{{ p.tipo_plano or '—' }}</td>
+            <td class="nowrap">{{ p.data | datebr }}</td>
+            <td class="text-right nowrap">{{ p.valor | brl }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" style="padding-top:10px;font-weight:600;font-size:12px;">Total</td>
+                <td class="text-right nowrap" style="font-weight:700;padding-top:10px;border-top:2px solid #e2e2e2">{{ confirmado_mes | brl }}</td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty">Nenhum pagamento confirmado em {{ mes }}.</div>
+    {% endif %}
+</div>
+
+<!-- Adicionar despesa -->
+<div class="add-panel">
+    <div class="add-panel-title">Adicionar Despesa</div>
+    <form method="post" action="{{ url_for('despesa_nova') }}">
+        <input type="hidden" name="mes_redirect" value="{{ mes }}">
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr; gap:12px; align-items:end;">
+            <div class="form-group" style="margin-bottom:0">
+                <label>Descrição *</label>
+                <input type="text" name="descricao" required placeholder="ex: Aluguel">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Valor (R$) *</label>
+                <input type="number" name="valor" required step="0.01" min="0" placeholder="0">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Data *</label>
+                <input type="date" name="data" required value="{{ hoje.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Categoria</label>
+                <select name="categoria">
+                    <option>Aluguel</option>
+                    <option>Manutenção</option>
+                    <option>Marketing</option>
+                    <option>Material</option>
+                    <option>Equipamento</option>
+                    <option>Salário</option>
+                    <option>Outros</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group" style="margin-top:10px;margin-bottom:0">
+            <label>Observações (opcional)</label>
+            <input type="text" name="observacoes" placeholder="Detalhes adicionais">
+        </div>
+        <div style="margin-top:12px">
+            <button type="submit" class="btn btn-primary">Adicionar despesa</button>
+        </div>
+    </form>
+</div>
+
+<!-- Despesas do mês -->
+<div class="section">
+    <div class="section-title">Despesas em {{ mes }} ({{ despesas | length }})</div>
+    {% if despesas %}
+    <div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>Data</th>
+                <th>Descrição</th>
+                <th>Categoria</th>
+                <th>Observações</th>
+                <th class="text-right">Valor</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for d in despesas %}
+        <tr>
+            <td class="nowrap">{{ d.data | datebr }}</td>
+            <td>{{ d.descricao }}</td>
+            <td>{{ d.categoria or '—' }}</td>
+            <td class="text-muted">{{ d.observacoes or '—' }}</td>
+            <td class="text-right nowrap">{{ d.valor | brl }}</td>
+            <td>
+                <form method="post" action="{{ url_for('despesa_deletar', id=d.id) }}" class="inline"
+                      onsubmit="return confirm('Remover esta despesa?')">
+                    <input type="hidden" name="mes_redirect" value="{{ mes }}">
+                    <button class="btn btn-sm btn-danger">✕</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="4" style="padding-top:12px;font-weight:600;font-size:13px;">Total</td>
+                <td class="text-right nowrap" style="font-weight:700;padding-top:12px;border-top:2px solid #e2e2e2">{{ total_despesas | brl }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty">Nenhuma despesa em {{ mes }}.</div>
+    {% endif %}
+</div>
+
+{% endblock %}
