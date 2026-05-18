@@ -16,9 +16,9 @@ USE_PG   = bool(os.environ.get('DATABASE_URL'))
 
 def get_db():
     if USE_PG:
-        import psycopg2, psycopg2.extras
-        return psycopg2.connect(os.environ['DATABASE_URL'],
-                                cursor_factory=psycopg2.extras.RealDictCursor)
+        import psycopg
+        from psycopg.rows import dict_row
+        return psycopg.connect(os.environ['DATABASE_URL'], row_factory=dict_row)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = lambda c, r: dict(zip([d[0] for d in c.description], r))
     return conn
