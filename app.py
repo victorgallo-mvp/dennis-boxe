@@ -408,7 +408,10 @@ def health():
 @app.route('/', defaults={'path': 'index.html'})
 @app.route('/<path:path>')
 def serve_frontend(path):
-    # On Railway (PostgreSQL), Flask is API-only — frontend is on Vercel
+    # API paths must never be served as HTML
+    if path.startswith('api') or path == 'health':
+        return jsonify({'error': f'/{path} não encontrado'}), 404
+    # On Railway, Flask is API-only
     if USE_PG:
         return jsonify({'error': f'/{path} não encontrado'}), 404
     full = os.path.join(FRONTEND, path)
