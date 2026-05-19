@@ -254,18 +254,22 @@ def api_aluno(id):
 
 def _aluno_tuple(data):
     ultimo  = data.get('ultimo_pagamento') or None
-    tipo    = data.get('tipo_plano', 'Mensal')
+    tipo    = data.get('tipo_plano') or 'Mensal'
     proximo = data.get('proximo_pagamento') or None
     if not proximo and ultimo:
         prox = calc_proximo(ultimo, tipo)
         proximo = prox.strftime('%Y-%m-%d') if prox else None
     freq = data.get('frequencia_semana')
-    return (data['nome'].strip(), data.get('plano_nome','').strip(),
-            float(data.get('valor_mensal') or 0), tipo, ultimo, proximo,
-            data.get('horarios','').strip() or None,
-            float(freq) if freq else None,
-            data.get('sistema_pagamento','PIX'),
-            data.get('observacoes','').strip() or None)
+    return (
+        (data.get('nome') or '').strip(),
+        (data.get('plano_nome') or '').strip(),
+        float(data.get('valor_mensal') or 0),
+        tipo, ultimo, proximo,
+        (data.get('horarios') or '').strip() or None,
+        float(freq) if freq else None,
+        data.get('sistema_pagamento') or 'PIX',
+        (data.get('observacoes') or '').strip() or None,
+    )
 
 @app.route('/api/alunos', methods=['POST'])
 def api_aluno_novo():

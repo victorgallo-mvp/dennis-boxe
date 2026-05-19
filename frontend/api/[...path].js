@@ -4,7 +4,6 @@ module.exports = async function handler(req, res) {
     if (!base) {
         return res.status(500).json({ error: 'RAILWAY_URL não configurado no Vercel.' });
     }
-
     if (!base.startsWith('http')) {
         base = 'https://' + base;
     }
@@ -18,9 +17,14 @@ module.exports = async function handler(req, res) {
 
     try {
         const upstream = await fetch(url, opts);
-        const data = await upstream.json();
-        return res.status(upstream.status).json(data);
+        const text = await upstream.text();
+        try {
+            return res.status(upstream.status).json(JSON.parse(text));
+        } catch {
+            // Railway retornou HTML (ex: erro 500) — devolve como JSON legível
+            return res.status(upstream.status).json({ error: `Erro ${upstream.status} no servidor.`, detail: text.slice(0, 300) });
+        }
     } catch (e) {
-        return res.status(502).json({ error: String(e) });
+        return res.status(502).json({ error: 'Falha ao conectar com o servidor: ' + String(e) });
     }
 };
