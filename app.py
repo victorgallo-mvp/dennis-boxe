@@ -422,9 +422,17 @@ def serve_frontend(path):
     return send_from_directory(FRONTEND, 'index.html')
 
 
-@app.errorhandler(Exception)
-def handle_exception(e):
-    return jsonify({'error': str(e)}), 500
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({'error': 'Não encontrado'}), 404
+
+@app.errorhandler(405)
+def method_not_allowed(e):
+    return jsonify({'error': 'Método não permitido'}), 405
+
+@app.errorhandler(500)
+def internal_error(e):
+    return jsonify({'error': 'Erro interno'}), 500
 
 
 init_db()
