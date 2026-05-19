@@ -398,11 +398,19 @@ def api_despesa_deletar(id):
     conn.commit(); conn.close(); return jsonify({'ok': True})
 
 
-# ── serve frontend ──────────────────────────────────────────────────────────
+@app.route('/health')
+def health():
+    return jsonify({'status': 'ok', 'mode': 'postgres' if USE_PG else 'sqlite'})
+
+
+# ── serve frontend (local only) ─────────────────────────────────────────────
 
 @app.route('/', defaults={'path': 'index.html'})
 @app.route('/<path:path>')
 def serve_frontend(path):
+    # On Railway (PostgreSQL), Flask is API-only — frontend is on Vercel
+    if USE_PG:
+        return jsonify({'error': f'/{path} não encontrado'}), 404
     full = os.path.join(FRONTEND, path)
     if os.path.isfile(full):
         return send_from_directory(FRONTEND, path)
