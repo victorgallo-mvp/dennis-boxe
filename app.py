@@ -411,6 +411,11 @@ def serve_frontend(path):
     return send_from_directory(FRONTEND, 'index.html')
 
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return jsonify({'error': str(e)}), 500
+
+
 init_db()
 
 if __name__ == '__main__':

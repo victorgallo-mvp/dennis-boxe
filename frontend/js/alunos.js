@@ -8,7 +8,8 @@ async function load() {
         const q = new URLSearchParams();
         if (currentBusca)  q.set('busca',  currentBusca);
         if (currentStatus) q.set('status', currentStatus);
-        render(await apiFetch('/alunos?' + q));
+        const data = await apiFetch('/alunos?' + q);
+        render(Array.isArray(data) ? data : []);
     } catch(e) {
         document.getElementById('content').innerHTML = `<div class="empty">Erro: ${escHtml(e.message)}</div>`;
     }

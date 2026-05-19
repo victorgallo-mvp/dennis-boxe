@@ -22,7 +22,9 @@ module.exports = async function handler(req, res) {
         try {
             return res.status(upstream.status).json(JSON.parse(text));
         } catch {
-            return res.status(upstream.status).json({ error: `Erro ${upstream.status} no servidor.`, detail: text.slice(0, 300) });
+            // JSON inválido ou corpo vazio — nunca retorna 2xx com erro
+            const errStatus = upstream.status >= 400 ? upstream.status : 502;
+            return res.status(errStatus).json({ error: `Resposta inválida do servidor (${upstream.status}).`, detail: text.slice(0, 300) });
         }
     } catch (e) {
         return res.status(502).json({ error: 'Falha ao conectar: ' + String(e) });
