@@ -3,12 +3,20 @@ let currentMes = new Date().toISOString().slice(0, 7);
 async function load() {
     const params = new URLSearchParams(window.location.search);
     currentMes = params.get('mes') || new Date().toISOString().slice(0, 7);
-    try { render(await apiFetch(`/financeiro?mes=${currentMes}`)); }
-    catch(e) { document.getElementById('content').innerHTML = `<div class="empty">Erro: ${escHtml(e.message)}</div>`; }
+    try {
+        const [fin, dash] = await Promise.all([
+            apiFetch(`/financeiro?mes=${currentMes}`),
+            apiFetch('/dashboard'),
+        ]);
+        render(fin, dash);
+    } catch(e) {
+        document.getElementById('content').innerHTML = `<div class="empty">Erro: ${escHtml(e.message)}</div>`;
+    }
 }
 
-function render(d) {
+function render(d, dash) {
     const hoje_mes = new Date().toISOString().slice(0, 7);
+    const mesLabel = currentMes;
 
     const resumoRows = d.receita_por_mes.map(r => `
     <tr ${r.atual ? 'style="font-weight:600"' : ''}>
@@ -47,18 +55,21 @@ function render(d) {
         </form>
     </div>
 
-    <div class="fin-cards">
+    <div class="cards">
         <div class="card">
-            <div class="card-label">Receita Confirmada</div>
+            <div class="card-label">Alunos Ativos</div>
+            <div class="card-value">${dash.total_alunos}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Receita Estimada</div>
+            <div class="card-value">${brl(dash.receita_mensal)}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Confirmado — ${escHtml(mesLabel)}</div>
             <div class="card-value">${brl(d.confirmado_mes)}</div>
-            <div class="hint mt-4">Pagamentos em ${escHtml(currentMes)}</div>
         </div>
         <div class="card">
-            <div class="card-label">Despesas</div>
-            <div class="card-value">${brl(d.total_despesas)}</div>
-        </div>
-        <div class="card">
-            <div class="card-label">Saldo</div>
+            <div class="card-label">Saldo — ${escHtml(mesLabel)}</div>
             <div class="card-value">${brl(d.saldo)}</div>
         </div>
     </div>
@@ -72,7 +83,7 @@ function render(d) {
     </div>
 
     <div class="section">
-        <div class="section-title">Pagamentos Confirmados em ${escHtml(currentMes)} (${d.pagamentos_mes.length})</div>
+        <div class="section-title">Pagamentos Confirmados em ${escHtml(mesLabel)} (${d.pagamentos_mes.length})</div>
         ${d.pagamentos_mes.length ? `
         <div class="table-wrap"><table>
             <thead><tr><th>Aluno</th><th>Plano</th><th>Tipo</th><th>Data</th><th class="text-right">Valor</th></tr></thead>
@@ -81,7 +92,7 @@ function render(d) {
                 <td colspan="4" style="padding-top:10px;font-weight:600;font-size:12px">Total</td>
                 <td class="text-right nowrap" style="font-weight:700;padding-top:10px;border-top:2px solid #e2e2e2">${brl(d.confirmado_mes)}</td>
             </tr></tfoot>
-        </table></div>` : `<div class="empty">Nenhum pagamento confirmado em ${escHtml(currentMes)}.</div>`}
+        </table></div>` : `<div class="empty">Nenhum pagamento confirmado em ${escHtml(mesLabel)}.</div>`}
     </div>
 
     <div class="add-panel">
@@ -104,7 +115,7 @@ function render(d) {
     </div>
 
     <div class="section">
-        <div class="section-title">Despesas em ${escHtml(currentMes)} (${d.despesas.length})</div>
+        <div class="section-title">Despesas em ${escHtml(mesLabel)} (${d.despesas.length})</div>
         ${d.despesas.length ? `
         <div class="table-wrap"><table>
             <thead><tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Observações</th><th class="text-right">Valor</th><th></th></tr></thead>
@@ -114,7 +125,7 @@ function render(d) {
                 <td class="text-right nowrap" style="font-weight:700;padding-top:12px;border-top:2px solid #e2e2e2">${brl(d.total_despesas)}</td>
                 <td></td>
             </tr></tfoot>
-        </table></div>` : `<div class="empty">Nenhuma despesa em ${escHtml(currentMes)}.</div>`}
+        </table></div>` : `<div class="empty">Nenhuma despesa em ${escHtml(mesLabel)}.</div>`}
     </div>`;
 }
 

@@ -8,18 +8,10 @@ async function load() {
 
 function render(d) {
     const hoje = new Date(d.hoje + 'T12:00:00');
-    const mesLabel = hoje.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-
     let h = `
     <div class="page-header">
         <h1>Dashboard</h1>
         <span class="sub">${hoje.toLocaleDateString('pt-BR')}</span>
-    </div>
-    <div class="cards">
-        <div class="card"><div class="card-label">Alunos Ativos</div><div class="card-value">${d.total_alunos}</div></div>
-        <div class="card"><div class="card-label">Receita Estimada</div><div class="card-value">${brl(d.receita_mensal)}</div></div>
-        <div class="card"><div class="card-label">Confirmado ${mesLabel}</div><div class="card-value">${brl(d.confirmado_mes)}</div></div>
-        <div class="card"><div class="card-label">Saldo ${mesLabel}</div><div class="card-value">${brl(d.saldo)}</div></div>
     </div>`;
 
     if (d.vencidos.length) {
