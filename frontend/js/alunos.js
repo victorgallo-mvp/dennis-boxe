@@ -26,7 +26,7 @@ function render(alunos) {
     ].map(t => `<a href="?${currentBusca ? 'busca='+encodeURIComponent(currentBusca)+'&' : ''}status=${t.key}" class="ftab ${currentStatus===t.key?'ftab-active':''}">${escHtml(t.label)}</a>`).join('');
 
     const rows = alunos.map(a => `
-        <tr>
+        <tr id="row-${a.id}">
             <td><strong>${escHtml(a.nome)}</strong></td>
             <td>${escHtml(a.plano_nome||'—')}</td>
             <td class="nowrap">${escHtml(a.tipo_plano||'—')}</td>
@@ -41,11 +41,17 @@ function render(alunos) {
                 <div class="actions">
                     <button class="btn btn-sm btn-secondary" onclick="pagar(${a.id},'${escHtml(a.nome)}')">✓ Pago</button>
                     <a href="/aluno-form?id=${a.id}" class="btn btn-sm btn-ghost">Editar</a>
+                    <button class="btn btn-sm btn-ghost" onclick="toggleHistorico(${a.id}, this)" title="Histórico de pagamentos">Histórico</button>
                     <button class="btn btn-sm btn-danger" onclick="deletar(${a.id},'${escHtml(a.nome)}')">✕</button>
                 </div>
             </td>
         </tr>
         ${a.observacoes ? `<tr><td></td><td colspan="10" style="padding-top:2px;padding-bottom:8px"><span class="text-muted" style="font-size:12px">${escHtml(a.observacoes)}</span></td></tr>` : ''}
+        <tr id="hist-${a.id}" style="display:none">
+            <td colspan="11" style="padding:0">
+                <div id="hist-content-${a.id}" style="padding:14px 16px 16px;background:#fafafa;border-bottom:1px solid #e8e8e8"></div>
+            </td>
+        </tr>
     `).join('');
 
     document.getElementById('content').innerHTML = `
@@ -69,6 +75,58 @@ function render(alunos) {
         </tr></thead>
         <tbody>${rows}</tbody>
     </table></div>` : `<div class="empty">Nenhum aluno encontrado.</div>`}`;
+}
+
+async function toggleHistorico(id, btn) {
+    const row     = document.getElementById(`hist-${id}`);
+    const content = document.getElementById(`hist-content-${id}`);
+
+    if (row.style.display !== 'none') {
+        row.style.display = 'none';
+        btn.textContent = 'Histórico';
+        return;
+    }
+
+    row.style.display = '';
+    btn.textContent = 'Fechar';
+    content.innerHTML = '<div class="empty" style="padding:16px">Carregando…</div>';
+
+    try {
+        const pagamentos = await apiFetch(`/alunos/${id}/pagamentos`);
+        if (!pagamentos.length) {
+            content.innerHTML = '<div class="empty" style="padding:16px">Nenhum pagamento registrado.</div>';
+            return;
+        }
+
+        const total = pagamentos.reduce((s, p) => s + p.valor, 0);
+        content.innerHTML = `
+        <div style="font-size:12px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">
+            Histórico de Pagamentos (${pagamentos.length})
+        </div>
+        <table style="font-size:13px;width:auto;min-width:320px">
+            <thead>
+                <tr>
+                    <th style="padding:6px 12px 6px 0">Data</th>
+                    <th style="padding:6px 12px" class="text-right">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${pagamentos.map(p => `
+                <tr>
+                    <td style="padding:6px 12px 6px 0" class="nowrap">${datebr(p.data)}</td>
+                    <td style="padding:6px 12px" class="text-right nowrap">${brl(p.valor)}</td>
+                </tr>`).join('')}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td style="padding-top:8px;font-weight:600;font-size:12px;border-top:1px solid #e2e2e2">Total</td>
+                    <td style="padding-top:8px;font-weight:700;border-top:1px solid #e2e2e2" class="text-right nowrap">${brl(total)}</td>
+                </tr>
+            </tfoot>
+        </table>`;
+    } catch(e) {
+        content.innerHTML = `<div class="empty" style="padding:16px">Erro: ${escHtml(e.message)}</div>`;
+    }
 }
 
 function buscar(e) {

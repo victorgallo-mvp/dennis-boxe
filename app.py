@@ -298,6 +298,17 @@ def api_aluno_deletar(id):
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
+@app.route('/api/alunos/<int:id>/pagamentos', methods=['GET'])
+def api_aluno_pagamentos(id):
+    conn = get_db()
+    rows = db_all(conn,
+        'SELECT * FROM pagamentos WHERE aluno_id=? ORDER BY data DESC', [id])
+    conn.close()
+    for r in rows:
+        r['data'] = str(r['data'])[:10]
+    return jsonify(rows)
+
+
 @app.route('/api/alunos/<int:id>/pagar', methods=['POST'])
 def api_aluno_pagar(id):
     conn = get_db()
