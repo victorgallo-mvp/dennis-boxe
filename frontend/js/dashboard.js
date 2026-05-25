@@ -52,13 +52,18 @@ function render(d) {
                 <td data-label="Valor" class="nowrap">${brl(a.valor_mensal)}</td>
                 <td data-label="Vencimento" class="nowrap">${datebr(a.proximo_pagamento)}</td>
                 <td data-label="Status">${badge(a.status, a.status_label)}</td>
+                <td>
+                    <div class="actions">
+                        <button class="btn btn-sm btn-secondary" onclick="pagar(${a.id},'${escHtml(a.nome)}')">✓ Confirmar Pagamento</button>
+                    </div>
+                </td>
             </tr>`).join('');
         h += `
         <div class="section">
             <div class="section-title">Vencendo em Breve — ${d.vence_breve.length}</div>
             <div class="table-wrap">
             <table class="dash-table">
-                <thead><tr><th>Aluno</th><th>Plano</th><th>Tipo</th><th>Valor</th><th>Vencimento</th><th>Status</th></tr></thead>
+                <thead><tr><th>Aluno</th><th>Plano</th><th>Tipo</th><th>Valor</th><th>Vencimento</th><th>Status</th><th></th></tr></thead>
                 <tbody>${rows}</tbody>
             </table>
             </div>
