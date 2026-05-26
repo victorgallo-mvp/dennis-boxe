@@ -399,7 +399,7 @@ def api_despesa_nova():
     d = request.get_json(); conn = get_db()
     db_exec(conn, 'INSERT INTO despesas(descricao,valor,data,categoria,observacoes) VALUES(?,?,?,?,?)',
             [d['descricao'].strip(), float(d['valor']), d['data'],
-             d.get('categoria','Outros'), d.get('observacoes','').strip() or None])
+             d.get('categoria','Outros'), (d.get('observacoes') or '').strip() or None])
     conn.commit(); conn.close(); return jsonify({'ok': True})
 
 @app.route('/api/despesas/<int:id>', methods=['DELETE'])
