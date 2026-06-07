@@ -409,6 +409,13 @@ def api_despesa_deletar(id):
     conn.commit(); conn.close(); return jsonify({'ok': True})
 
 
+@app.after_request
+def no_cache(response):
+    if request.path.startswith('/api/') or request.path == '/health':
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @app.route('/health')
 def health():
     return jsonify({'status': 'ok', 'mode': 'postgres' if USE_PG else 'sqlite'})

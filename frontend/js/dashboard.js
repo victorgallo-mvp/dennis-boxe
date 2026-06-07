@@ -81,7 +81,7 @@ async function pagar(id, nome) {
     try {
         const r = await apiFetch(`/alunos/${id}/pagar`, { method: 'POST' });
         toast(r.message);
-        render(await apiFetch('/dashboard'));
+        await load();
     } catch(e) { toast(e.message, 'error'); }
 }
 
