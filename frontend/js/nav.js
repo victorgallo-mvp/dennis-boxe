@@ -3,7 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const active = (href) => (p === href || (href !== '/' && p.startsWith(href))) ? 'class="active"' : '';
     document.getElementById('nav-placeholder').innerHTML = `
     <nav>
-        <a href="/" class="nav-brand">Dennis Boxe</a>
+        <a href="/" class="nav-brand">🥊 Dennis Boxe</a>
         <ul>
             <li><a href="/" ${active('/')}>Dashboard</a></li>
             <li><a href="/alunos" ${active('/alunos')}>Alunos</a></li>

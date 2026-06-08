@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── TOAST ── */
@@ -20,7 +22,7 @@ body {
 
 /* ── NAV ── */
 header {
-    border-bottom: 1px solid #e2e2e2;
+    border-bottom: 3px solid #DC2626;
     background: #fff;
     position: sticky;
     top: 0;
@@ -36,11 +38,14 @@ nav {
     gap: 24px;
 }
 .nav-brand {
+    font-family: 'Oswald', sans-serif;
     font-weight: 700;
-    font-size: 15px;
-    color: #1a1a1a;
+    font-size: 16px;
+    color: #DC2626;
     text-decoration: none;
-    letter-spacing: -0.3px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
 }
 nav ul { list-style: none; display: flex; gap: 2px; }
 nav ul a {
@@ -51,8 +56,8 @@ nav ul a {
     color: #555;
     font-size: 13.5px;
 }
-nav ul a:hover { background: #f2f2f2; color: #1a1a1a; }
-nav ul a.active { color: #1a1a1a; font-weight: 600; }
+nav ul a:hover { background: #fff5f5; color: #DC2626; }
+nav ul a.active { color: #DC2626; font-weight: 600; }
 
 /* ── LAYOUT ── */
 main { padding: 32px 0 64px; }
@@ -76,7 +81,13 @@ main { padding: 32px 0 64px; }
     justify-content: space-between;
     margin-bottom: 24px;
 }
-.page-header h1 { font-size: 20px; font-weight: 700; }
+.page-header h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
 .page-header .sub { color: #888; font-size: 13px; }
 
 /* ── CARDS ── */
@@ -99,19 +110,25 @@ main { padding: 32px 0 64px; }
     margin-bottom: 6px;
     font-weight: 500;
 }
-.card-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+.card-value {
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+}
 
 /* ── SECTION ── */
 .section { margin-bottom: 40px; }
 .section-title {
-    font-size: 13px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
     font-weight: 600;
-    color: #555;
+    color: #1a1a1a;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.8px;
     margin-bottom: 12px;
     padding-bottom: 8px;
-    border-bottom: 1px solid #e8e8e8;
+    border-bottom: 2px solid #e8e8e8;
 }
 
 /* ── TABLE ── */
@@ -142,15 +159,15 @@ tr:hover td { background: #fafafa; }
     padding: 2px 8px;
     border-radius: 4px;
     font-size: 11.5px;
-    font-weight: 500;
+    font-weight: 600;
     border: 1px solid;
     white-space: nowrap;
 }
-.badge-vencido       { background: #f0f0f0; border-color: #b0b0b0; color: #333; font-weight: 700; }
-.badge-vence_hoje    { background: #efefef; border-color: #999; color: #222; font-weight: 700; }
-.badge-vence_breve   { background: #f5f5f5; border-color: #bbb; color: #444; }
-.badge-em_dia        { background: #f9f9f9; border-color: #d5d5d5; color: #666; }
-.badge-indefinido    { background: #fafafa; border-color: #e0e0e0; color: #999; }
+.badge-vencido    { background: #fef2f2; border-color: #fca5a5; color: #DC2626; }
+.badge-vence_hoje { background: #fff7ed; border-color: #fdba74; color: #c2410c; }
+.badge-vence_breve{ background: #fefce8; border-color: #fde047; color: #a16207; }
+.badge-em_dia     { background: #f0fdf4; border-color: #86efac; color: #15803d; }
+.badge-indefinido { background: #fafafa; border-color: #e0e0e0; color: #999; }
 
 /* ── BUTTONS ── */
 .btn {
@@ -166,8 +183,8 @@ tr:hover td { background: #fafafa; }
     transition: background 0.12s;
     white-space: nowrap;
 }
-.btn-primary   { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
-.btn-primary:hover { background: #333; }
+.btn-primary   { background: #DC2626; color: #fff; border-color: #DC2626; }
+.btn-primary:hover { background: #b91c1c; border-color: #b91c1c; }
 .btn-secondary { background: #fff; color: #1a1a1a; border-color: #ccc; }
 .btn-secondary:hover { background: #f5f5f5; }
 .btn-ghost     { background: transparent; color: #666; border-color: transparent; }
@@ -196,7 +213,7 @@ form.inline { display: inline; }
     font-size: 13.5px;
     font-family: inherit;
 }
-.toolbar input:focus { outline: none; border-color: #aaa; }
+.toolbar input:focus { outline: none; border-color: #DC2626; }
 
 .filter-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .ftab {
@@ -207,8 +224,8 @@ form.inline { display: inline; }
     text-decoration: none;
     color: #555;
 }
-.ftab:hover:not(.ftab-active) { background: #f5f5f5; }
-.ftab-active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.ftab:hover:not(.ftab-active) { background: #fff5f5; color: #DC2626; border-color: #fca5a5; }
+.ftab-active { background: #DC2626; color: #fff; border-color: #DC2626; }
 
 /* ── FORMS ── */
 .form-card {
@@ -231,7 +248,7 @@ input, select, textarea {
     background: #fff;
     font-family: inherit;
 }
-input:focus, select:focus, textarea:focus { outline: none; border-color: #999; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #DC2626; }
 textarea { resize: vertical; min-height: 72px; }
 .hint { font-size: 11.5px; color: #999; margin-top: 4px; }
 .form-actions {
@@ -256,10 +273,13 @@ textarea { resize: vertical; min-height: 72px; }
     background: #fafafa;
 }
 .add-panel-title {
-    font-size: 13px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
     font-weight: 600;
     margin-bottom: 14px;
-    color: #444;
+    color: #1a1a1a;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* ── FINANCEIRO STATS ── */
@@ -289,18 +309,18 @@ textarea { resize: vertical; min-height: 72px; }
 
     /* page header */
     .page-header { flex-wrap: wrap; gap: 8px; margin-bottom: 16px; align-items: center; }
-    .page-header h1 { font-size: 18px; }
+    .page-header h1 { font-size: 22px; }
 
     /* cards */
     .cards { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
     .fin-cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .card { padding: 14px 14px; }
     .card-label { font-size: 10px; }
-    .card-value { font-size: 20px; }
+    .card-value { font-size: 22px; }
 
     /* section */
     .section { margin-bottom: 24px; }
-    .section-title { font-size: 12px; }
+    .section-title { font-size: 13px; }
 
     /* dashboard tables → cards on mobile */
     .dash-table thead { display: none; }
