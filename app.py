@@ -72,10 +72,11 @@ def calc_proximo(ultimo_str, tipo_plano):
     tipo = (tipo_plano or '').lower()
     return add_months(dt, 6 if 'semestral' in tipo else 3 if 'trimestral' in tipo else 1)
 
-def calc_payment_valor(valor_mensal, tipo_plano):
-    v = float(valor_mensal or 0)
+def valor_mensal_equivalente(valor_plano, tipo_plano):
+    """Valor do plano (cobrado por ciclo) convertido para uma média mensal."""
+    v = float(valor_plano or 0)
     tipo = (tipo_plano or '').lower()
-    return v * (6 if 'semestral' in tipo else 3 if 'trimestral' in tipo else 1)
+    return v / (6 if 'semestral' in tipo else 3 if 'trimestral' in tipo else 1)
 
 def payment_status(proximo_str):
     if not proximo_str: return 'indefinido'
@@ -123,6 +124,8 @@ SCHEMA = [
         nome TEXT NOT NULL UNIQUE,
         preco REAL NOT NULL,
         valor_aula REAL,
+        preco_trimestral REAL,
+        preco_semestral REAL,
         ativo INTEGER DEFAULT 1)""",
     """CREATE TABLE IF NOT EXISTS alunos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -151,25 +154,44 @@ SCHEMA = [
         valor REAL NOT NULL,
         data TEXT NOT NULL,
         confirmado INTEGER DEFAULT 1,
-        observacoes TEXT)""",
+        observacoes TEXT,
+        plano_nome TEXT,
+        tipo_plano TEXT)""",
 ]
 
+# columns added after the initial release; ensured on every startup for dbs created before they existed
+COLUMN_MIGRATIONS = [
+    ('planos',     'preco_trimestral', 'REAL'),
+    ('planos',     'preco_semestral',  'REAL'),
+    ('pagamentos', 'plano_nome',       'TEXT'),
+    ('pagamentos', 'tipo_plano',       'TEXT'),
+]
+
+def ensure_column(conn, table, column, coltype):
+    if USE_PG:
+        db_exec(conn, f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {coltype}')
+    else:
+        cols = [r['name'] for r in db_all(conn, f'PRAGMA table_info({table})')]
+        if column not in cols:
+            db_exec(conn, f'ALTER TABLE {table} ADD COLUMN {column} {coltype}')
+
 SEED_PLANOS = [
-    ('Boxe Coletivo 3x',120.0,25.0),('Boxe Coletivo 2x',80.0,None),
-    ('Boxe Coletivo 1x',40.0,None),('Boxe Personal 1x',85.0,None),
-    ('Boxe Personal 2x',165.0,None),('Boxe Personal 3x',250.0,None),
+    # nome, preco (mensal), valor_aula, preco_trimestral, preco_semestral
+    ('Boxe Coletivo 3x',120.0,25.0,270.0,480.0),('Boxe Coletivo 2x',80.0,None,None,None),
+    ('Boxe Coletivo 1x',40.0,None,None,None),('Boxe Personal 1x',85.0,None,None,None),
+    ('Boxe Personal 2x',165.0,None,None,None),('Boxe Personal 3x',250.0,None,None,None),
 ]
 
 SEED_ALUNOS = [
     ('Victor Gallo','Boxe Personal 3x',250.0,'Mensal','2026-05-10','2026-06-10',None,5.0,'PIX',None),
-    ('Júlio Laranjo','Boxe Coletivo 3x',120.0,'Trimestral','2026-05-07','2026-08-07','19:00 (Seg) e 19:00 (Qui)',2.0,'PIX','Renovação em Agosto'),
+    ('Júlio Laranjo','Boxe Coletivo 3x',270.0,'Trimestral','2026-05-07','2026-08-07','19:00 (Seg) e 19:00 (Qui)',2.0,'PIX','Renovação em Agosto'),
     ('Adriano Belux','Boxe Coletivo 2x',80.0,'Mensal','2026-04-25','2026-05-25','08:00 - 09:00 (Seg à Sex)',4.0,'PIX',None),
     ('Ricardo Rodrigues','Boxe Coletivo 3x',120.0,'Mensal','2026-05-09','2026-06-09',None,2.0,'PIX',None),
     ('Fernanda Victoria','Boxe Coletivo 3x',120.0,'Mensal','2026-05-04',None,None,3.0,'PIX',None),
     ('Samir Frade','Boxe Coletivo 3x',120.0,'Mensal','2026-04-16',None,None,3.0,'PIX',None),
     ('Ricardo Ferraz','Boxe Personal 1x',85.0,'Trimestral','2026-05-08',None,None,3.0,'PIX','Plano trimestral'),
     ('Diogo Godoi','Boxe Personal 3x',250.0,'Mensal','2026-04-17',None,None,1.0,'PIX',None),
-    ('Marcelo Renan','Boxe Coletivo 3x',120.0,'Semestral',None,None,None,None,'PIX',None),
+    ('Marcelo Renan','Boxe Coletivo 3x',480.0,'Semestral',None,None,None,None,'PIX',None),
     ('Edneia Crescencio','Boxe Coletivo 3x',120.0,'Mensal','2026-05-17',None,None,None,'PIX',None),
     ('Ana Vitoria Teixeira','Boxe Coletivo 3x',120.0,'Mensal','2025-10-14',None,None,None,'PIX',None),
     ('Elizabete Aparecida Silva','Boxe Coletivo 3x',120.0,'Mensal','2026-04-17',None,None,None,'PIX',None),
@@ -186,10 +208,16 @@ def init_db():
     conn = get_db()
     for s in SCHEMA:
         db_exec(conn, s)
+    for table, column, coltype in COLUMN_MIGRATIONS:
+        ensure_column(conn, table, column, coltype)
 
     if db_val(conn, 'SELECT COUNT(*) AS c FROM planos') == 0:
         for row in SEED_PLANOS:
-            db_exec(conn, 'INSERT INTO planos(nome,preco,valor_aula) VALUES(?,?,?)', row)
+            db_exec(conn, 'INSERT INTO planos(nome,preco,valor_aula,preco_trimestral,preco_semestral) VALUES(?,?,?,?,?)', row)
+    else:
+        # backfill preços de pacote para bancos já existentes (coluna nova ainda nula)
+        db_exec(conn, "UPDATE planos SET preco_trimestral=270,preco_semestral=480 "
+                      "WHERE nome='Boxe Coletivo 3x' AND preco_trimestral IS NULL")
 
     if db_val(conn, 'SELECT COUNT(*) AS c FROM alunos') == 0:
         for row in SEED_ALUNOS:
@@ -198,10 +226,10 @@ def init_db():
                 sistema_pagamento,observacoes) VALUES(?,?,?,?,?,?,?,?,?,?)''', row)
 
     if db_val(conn, 'SELECT COUNT(*) AS c FROM pagamentos') == 0:
-        for r in db_all(conn, 'SELECT id,nome,valor_mensal,tipo_plano,ultimo_pagamento FROM alunos WHERE ultimo_pagamento IS NOT NULL'):
+        for r in db_all(conn, 'SELECT id,nome,plano_nome,valor_mensal,tipo_plano,ultimo_pagamento FROM alunos WHERE ultimo_pagamento IS NOT NULL'):
             db_exec(conn,
-                'INSERT INTO pagamentos(aluno_id,aluno_nome,valor,data,confirmado) VALUES(?,?,?,?,1)',
-                (r['id'], r['nome'], calc_payment_valor(r['valor_mensal'], r['tipo_plano']), r['ultimo_pagamento']))
+                'INSERT INTO pagamentos(aluno_id,aluno_nome,valor,data,confirmado,plano_nome,tipo_plano) VALUES(?,?,?,?,1,?,?)',
+                (r['id'], r['nome'], float(r['valor_mensal'] or 0), r['ultimo_pagamento'], r['plano_nome'], r['tipo_plano']))
 
     conn.commit()
     conn.close()
@@ -220,7 +248,7 @@ def api_dashboard():
     conn.close()
     return jsonify({
         'total_alunos':  len(alunos),
-        'receita_mensal': sum(a['valor_mensal'] or 0 for a in alunos),
+        'receita_mensal': sum(valor_mensal_equivalente(a['valor_mensal'], a['tipo_plano']) for a in alunos),
         'confirmado_mes': float(confirmado or 0),
         'despesas_mes':   float(despesas or 0),
         'saldo':          float(confirmado or 0) - float(despesas or 0),
@@ -284,10 +312,17 @@ def api_aluno_novo():
 @app.route('/api/alunos/<int:id>', methods=['PUT'])
 def api_aluno_editar(id):
     conn = get_db()
+    tup = _aluno_tuple(request.get_json())
     db_exec(conn, '''UPDATE alunos SET nome=?,plano_nome=?,valor_mensal=?,tipo_plano=?,
         ultimo_pagamento=?,proximo_pagamento=?,horarios=?,frequencia_semana=?,
         sistema_pagamento=?,observacoes=? WHERE id=?''',
-        _aluno_tuple(request.get_json()) + (id,))
+        tup + (id,))
+    # mantém o pagamento mais recente coerente com o plano/valor atual do aluno
+    nome, plano_nome, valor_mensal, tipo_plano = tup[0], tup[1], tup[2], tup[3]
+    ultimo = db_one(conn, 'SELECT id FROM pagamentos WHERE aluno_id=? ORDER BY data DESC, id DESC LIMIT 1', [id])
+    if ultimo:
+        db_exec(conn, 'UPDATE pagamentos SET aluno_nome=?,valor=?,plano_nome=?,tipo_plano=? WHERE id=?',
+                [nome, valor_mensal, plano_nome, tipo_plano, ultimo['id']])
     conn.commit(); conn.close()
     return jsonify({'ok': True})
 
@@ -317,8 +352,8 @@ def api_aluno_pagar(id):
     prox = calc_proximo(hoje, a['tipo_plano'])
     db_exec(conn, 'UPDATE alunos SET ultimo_pagamento=?,proximo_pagamento=? WHERE id=?',
             [hoje, prox.strftime('%Y-%m-%d') if prox else None, id])
-    db_exec(conn, 'INSERT INTO pagamentos(aluno_id,aluno_nome,valor,data,confirmado) VALUES(?,?,?,?,1)',
-            [id, a['nome'], calc_payment_valor(a['valor_mensal'], a['tipo_plano']), hoje])
+    db_exec(conn, 'INSERT INTO pagamentos(aluno_id,aluno_nome,valor,data,confirmado,plano_nome,tipo_plano) VALUES(?,?,?,?,1,?,?)',
+            [id, a['nome'], float(a['valor_mensal'] or 0), hoje, a['plano_nome'], a['tipo_plano']])
     conn.commit(); conn.close()
     return jsonify({'ok': True, 'message': f'Pagamento de {a["nome"]} confirmado.'})
 
@@ -335,9 +370,11 @@ def api_planos():
 def api_plano_novo():
     d = request.get_json(); conn = get_db()
     try:
-        new_id = db_insert(conn, 'INSERT INTO planos(nome,preco,valor_aula) VALUES(?,?,?)',
+        new_id = db_insert(conn, 'INSERT INTO planos(nome,preco,valor_aula,preco_trimestral,preco_semestral) VALUES(?,?,?,?,?)',
             [d['nome'].strip(), float(d.get('preco') or 0),
-             float(d['valor_aula']) if d.get('valor_aula') else None])
+             float(d['valor_aula']) if d.get('valor_aula') else None,
+             float(d['preco_trimestral']) if d.get('preco_trimestral') else None,
+             float(d['preco_semestral']) if d.get('preco_semestral') else None])
         conn.commit(); conn.close()
         return jsonify({'ok': True, 'id': new_id})
     except Exception:
@@ -346,9 +383,11 @@ def api_plano_novo():
 @app.route('/api/planos/<int:id>', methods=['PUT'])
 def api_plano_editar(id):
     d = request.get_json(); conn = get_db()
-    db_exec(conn, 'UPDATE planos SET nome=?,preco=?,valor_aula=? WHERE id=?',
+    db_exec(conn, 'UPDATE planos SET nome=?,preco=?,valor_aula=?,preco_trimestral=?,preco_semestral=? WHERE id=?',
             [d['nome'].strip(), float(d.get('preco') or 0),
-             float(d['valor_aula']) if d.get('valor_aula') else None, id])
+             float(d['valor_aula']) if d.get('valor_aula') else None,
+             float(d['preco_trimestral']) if d.get('preco_trimestral') else None,
+             float(d['preco_semestral']) if d.get('preco_semestral') else None, id])
     conn.commit(); conn.close(); return jsonify({'ok': True})
 
 @app.route('/api/planos/<int:id>', methods=['DELETE'])
@@ -372,7 +411,10 @@ def api_financeiro():
         "SELECT * FROM despesas WHERE strftime('%Y-%m',data)=? ORDER BY data DESC", [mes])
     total_desp = sum(float(d['valor']) for d in despesas)
     pagamentos = db_all(conn,
-        "SELECT p.*,a.plano_nome,a.tipo_plano FROM pagamentos p LEFT JOIN alunos a ON a.id=p.aluno_id "
+        "SELECT p.id,p.aluno_id,p.aluno_nome,p.valor,p.data,p.confirmado,p.observacoes,"
+        "COALESCE(p.plano_nome,a.plano_nome) AS plano_nome,"
+        "COALESCE(p.tipo_plano,a.tipo_plano) AS tipo_plano "
+        "FROM pagamentos p LEFT JOIN alunos a ON a.id=p.aluno_id "
         "WHERE strftime('%Y-%m',p.data)=? AND p.confirmado=1 ORDER BY p.data DESC", [mes])
 
     por_mes = []

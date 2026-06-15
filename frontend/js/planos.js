@@ -8,6 +8,8 @@ function render(planos) {
     <tr id="row-${p.id}">
         <td><strong>${escHtml(p.nome)}</strong></td>
         <td>${brl(p.preco)}</td>
+        <td>${p.preco_trimestral ? brl(p.preco_trimestral) : '—'}</td>
+        <td>${p.preco_semestral ? brl(p.preco_semestral) : '—'}</td>
         <td>${p.valor_aula ? brl(p.valor_aula) : '—'}</td>
         <td>
             <div class="actions">
@@ -18,7 +20,9 @@ function render(planos) {
                 <form onsubmit="salvarEdicao(event,${p.id})">
                     <div class="inline-form">
                         <div class="form-group"><label>Nome</label><input name="nome" value="${escHtml(p.nome)}" required style="width:200px"></div>
-                        <div class="form-group"><label>Preço (R$)</label><input type="number" name="preco" value="${p.preco}" required step="0.01" style="width:110px"></div>
+                        <div class="form-group"><label>Mensal (R$)</label><input type="number" name="preco" value="${p.preco}" required step="0.01" style="width:110px"></div>
+                        <div class="form-group"><label>Trimestral (R$)</label><input type="number" name="preco_trimestral" value="${p.preco_trimestral||''}" step="0.01" placeholder="opcional" style="width:110px"></div>
+                        <div class="form-group"><label>Semestral (R$)</label><input type="number" name="preco_semestral" value="${p.preco_semestral||''}" step="0.01" placeholder="opcional" style="width:110px"></div>
                         <div class="form-group"><label>Valor/Aula</label><input type="number" name="valor_aula" value="${p.valor_aula||''}" step="0.01" style="width:110px"></div>
                         <button type="submit" class="btn btn-primary btn-sm" style="align-self:flex-end">Salvar</button>
                         <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEdit(${p.id})" style="align-self:flex-end">Cancelar</button>
@@ -35,15 +39,17 @@ function render(planos) {
         <form onsubmit="criarPlano(event)">
             <div class="inline-form">
                 <div class="form-group"><label>Nome</label><input name="nome" required placeholder="ex: Boxe Coletivo 3x" style="width:220px"></div>
-                <div class="form-group"><label>Preço (R$/mês)</label><input type="number" name="preco" required step="0.01" min="0" placeholder="120" style="width:120px"></div>
-                <div class="form-group"><label>Valor/Aula (opcional)</label><input type="number" name="valor_aula" step="0.01" placeholder="25" style="width:130px"></div>
+                <div class="form-group"><label>Mensal (R$)</label><input type="number" name="preco" required step="0.01" min="0" placeholder="120" style="width:110px"></div>
+                <div class="form-group"><label>Trimestral (R$, opcional)</label><input type="number" name="preco_trimestral" step="0.01" placeholder="270" style="width:110px"></div>
+                <div class="form-group"><label>Semestral (R$, opcional)</label><input type="number" name="preco_semestral" step="0.01" placeholder="480" style="width:110px"></div>
+                <div class="form-group"><label>Valor/Aula (opcional)</label><input type="number" name="valor_aula" step="0.01" placeholder="25" style="width:110px"></div>
                 <button type="submit" class="btn btn-primary" style="align-self:flex-end">Adicionar</button>
             </div>
         </form>
     </div>
     ${planos.length ? `
     <div class="table-wrap"><table>
-        <thead><tr><th>Plano</th><th>Preço Mensal</th><th>Valor por Aula</th><th></th></tr></thead>
+        <thead><tr><th>Plano</th><th>Mensal</th><th>Trimestral</th><th>Semestral</th><th>Valor por Aula</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
     </table></div>` : `<div class="empty">Nenhum plano cadastrado.</div>`}`;
 }
@@ -56,7 +62,8 @@ function toggleEdit(id) {
 async function criarPlano(e) {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const body = { nome: fd.get('nome'), preco: fd.get('preco'), valor_aula: fd.get('valor_aula') || null };
+    const body = { nome: fd.get('nome'), preco: fd.get('preco'), valor_aula: fd.get('valor_aula') || null,
+                    preco_trimestral: fd.get('preco_trimestral') || null, preco_semestral: fd.get('preco_semestral') || null };
     try { await apiFetch('/planos', { method: 'POST', body: JSON.stringify(body) }); toast('Plano criado.'); load(); }
     catch(e) { toast(e.message, 'error'); }
 }
@@ -64,7 +71,8 @@ async function criarPlano(e) {
 async function salvarEdicao(e, id) {
     e.preventDefault();
     const fd = new FormData(e.target);
-    const body = { nome: fd.get('nome'), preco: fd.get('preco'), valor_aula: fd.get('valor_aula') || null };
+    const body = { nome: fd.get('nome'), preco: fd.get('preco'), valor_aula: fd.get('valor_aula') || null,
+                    preco_trimestral: fd.get('preco_trimestral') || null, preco_semestral: fd.get('preco_semestral') || null };
     try { await apiFetch(`/planos/${id}`, { method: 'PUT', body: JSON.stringify(body) }); toast('Plano atualizado.'); load(); }
     catch(e) { toast(e.message, 'error'); }
 }

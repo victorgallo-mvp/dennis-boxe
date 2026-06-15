@@ -19,7 +19,7 @@ function sel(opts, current) {
 function render(a) {
     const v = a || {};
     const planosOpts = `<option value="">— Selecione —</option>` +
-        planosData.map(p => `<option value="${escHtml(p.nome)}" data-preco="${p.preco}" ${(v.plano_nome||'').trim()===p.nome.trim()?'selected':''}>${escHtml(p.nome)} — R$ ${p.preco|0}</option>`).join('');
+        planosData.map(p => `<option value="${escHtml(p.nome)}" data-preco="${p.preco}" data-preco-trimestral="${p.preco_trimestral||''}" data-preco-semestral="${p.preco_semestral||''}" ${(v.plano_nome||'').trim()===p.nome.trim()?'selected':''}>${escHtml(p.nome)} — R$ ${p.preco|0}</option>`).join('');
 
     document.getElementById('content').innerHTML = `
     <div class="page-header">
@@ -38,13 +38,13 @@ function render(a) {
                 <select name="plano_nome" id="sel-plano" onchange="preencherValor()">${planosOpts}</select>
             </div>
             <div class="form-group">
-                <label>Valor Mensal (R$)</label>
+                <label>Valor do Plano (R$)</label>
                 <input type="number" name="valor_mensal" id="inp-valor" step="0.01" min="0" value="${escHtml(v.valor_mensal||'')}">
-                <div class="hint">Preenchido ao selecionar o plano.</div>
+                <div class="hint">Valor cobrado no ciclo selecionado (mensal, trimestral ou semestral).</div>
             </div>
             <div class="form-group">
                 <label>Tipo de Plano</label>
-                <select name="tipo_plano" id="sel-tipo" onchange="calcProximo()">
+                <select name="tipo_plano" id="sel-tipo" onchange="preencherValor()">
                     ${sel([['Mensal','Mensal'],['Trimestral','Trimestral'],['Semestral','Semestral']], (v.tipo_plano||'Mensal').replace(/\s/g,''))}
                 </select>
             </div>
@@ -86,8 +86,15 @@ function render(a) {
 
 function preencherValor() {
     const sel = document.getElementById('sel-plano');
-    const preco = sel.options[sel.selectedIndex]?.dataset?.preco;
-    if (preco) document.getElementById('inp-valor').value = preco;
+    const opt = sel.options[sel.selectedIndex];
+    const tipo = document.getElementById('sel-tipo').value;
+    if (opt) {
+        let preco;
+        if (tipo === 'Trimestral' && opt.dataset.precoTrimestral) preco = opt.dataset.precoTrimestral;
+        else if (tipo === 'Semestral' && opt.dataset.precoSemestral) preco = opt.dataset.precoSemestral;
+        else if (tipo === 'Mensal') preco = opt.dataset.preco;
+        if (preco) document.getElementById('inp-valor').value = preco;
+    }
     calcProximo();
 }
 
