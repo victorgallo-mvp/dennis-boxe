@@ -115,6 +115,17 @@ def last_n_months(n=6):
         out.append(f"{y}-{m:02d}")
     return out
 
+def months_window(past=3, future=3):
+    today = date.today()
+    out = []
+    for i in range(-past, future + 1):
+        m = today.month + i
+        y = today.year
+        while m <= 0:  m += 12; y -= 1
+        while m > 12: m -= 12; y += 1
+        out.append(f"{y}-{m:02d}")
+    return out
+
 
 # ── init db ─────────────────────────────────────────────────────────────────
 
@@ -405,6 +416,8 @@ def api_financeiro():
     hoje = date.today()
     mes  = request.args.get('mes', f"{hoje.year}-{hoje.month:02d}")
 
+    hoje_mes = f"{hoje.year}-{hoje.month:02d}"
+
     confirmado = db_val(conn,
         "SELECT COALESCE(SUM(valor),0) AS v FROM pagamentos WHERE strftime('%Y-%m',data)=? AND confirmado=1", [mes])
     despesas   = db_all(conn,
@@ -416,14 +429,20 @@ def api_financeiro():
         "COALESCE(p.tipo_plano,a.tipo_plano) AS tipo_plano "
         "FROM pagamentos p LEFT JOIN alunos a ON a.id=p.aluno_id "
         "WHERE strftime('%Y-%m',p.data)=? AND p.confirmado=1 ORDER BY p.data DESC", [mes])
+    a_receber = float(db_val(conn,
+        "SELECT COALESCE(SUM(valor_mensal),0) AS v FROM alunos "
+        "WHERE ativo=1 AND strftime('%Y-%m',proximo_pagamento)=?", [mes]) or 0)
 
     por_mes = []
-    for m in last_n_months(6):
-        rec  = float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM pagamentos WHERE strftime('%Y-%m',data)=? AND confirmado=1",[m]) or 0)
-        desp = float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM despesas WHERE strftime('%Y-%m',data)=?",[m]) or 0)
+    for m in months_window(past=3, future=3):
+        futuro = m > hoje_mes
+        rec  = 0.0 if futuro else float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM pagamentos WHERE strftime('%Y-%m',data)=? AND confirmado=1",[m]) or 0)
+        desp = 0.0 if futuro else float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM despesas WHERE strftime('%Y-%m',data)=?",[m]) or 0)
+        prev = float(db_val(conn,"SELECT COALESCE(SUM(valor_mensal),0) AS v FROM alunos WHERE ativo=1 AND strftime('%Y-%m',proximo_pagamento)=?",[m]) or 0)
         y, mm = m.split('-')
         por_mes.append({'mes':m,'label':f"{MONTH_NAMES[mm]}/{y}",'receita':rec,
-                        'despesas':desp,'saldo':rec-desp,'atual':m==f"{hoje.year}-{hoje.month:02d}"})
+                        'despesas':desp,'saldo':rec-desp,'previsto':prev,
+                        'futuro':futuro,'atual':m==hoje_mes})
 
     # ensure dates are strings
     for p in pagamentos:
@@ -432,9 +451,10 @@ def api_financeiro():
         d['data'] = str(d['data'])[:10]
 
     conn.close()
-    return jsonify({'confirmado_mes':float(confirmado or 0),'total_despesas':total_desp,
-                    'saldo':float(confirmado or 0)-total_desp,'despesas':despesas,
-                    'pagamentos_mes':pagamentos,'receita_por_mes':por_mes,'mes':mes})
+    return jsonify({'confirmado_mes':float(confirmado or 0),'a_receber':a_receber,
+                    'total_despesas':total_desp,'saldo':float(confirmado or 0)-total_desp,
+                    'despesas':despesas,'pagamentos_mes':pagamentos,
+                    'receita_por_mes':por_mes,'mes':mes})
 
 @app.route('/api/despesas', methods=['POST'])
 def api_despesa_nova():

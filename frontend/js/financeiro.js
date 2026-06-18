@@ -19,11 +19,12 @@ function render(d, dash) {
     const mesLabel = currentMes;
 
     const resumoRows = d.receita_por_mes.map(r => `
-    <tr ${r.atual ? 'style="font-weight:600"' : ''}>
-        <td>${escHtml(r.label)}${r.atual ? ' <span class="text-muted" style="font-size:11px;font-weight:400">mês atual</span>' : ''}</td>
-        <td class="text-right nowrap">${brl(r.receita)}</td>
-        <td class="text-right nowrap">${brl(r.despesas)}</td>
-        <td class="text-right nowrap">${brl(r.saldo)}</td>
+    <tr ${r.atual ? 'style="font-weight:600"' : r.futuro ? 'style="color:#888"' : ''}>
+        <td>${escHtml(r.label)}${r.atual ? ' <span class="text-muted" style="font-size:11px;font-weight:400">mês atual</span>' : r.futuro ? ' <span class="text-muted" style="font-size:11px">previsto</span>' : ''}</td>
+        <td class="text-right nowrap">${r.futuro ? '—' : brl(r.receita)}</td>
+        <td class="text-right nowrap">${r.previsto > 0 ? brl(r.previsto) : '—'}</td>
+        <td class="text-right nowrap">${r.futuro ? '—' : brl(r.despesas)}</td>
+        <td class="text-right nowrap">${r.futuro ? '—' : brl(r.saldo)}</td>
     </tr>`).join('');
 
     const pagRows = d.pagamentos_mes.map(p => `
@@ -61,12 +62,16 @@ function render(d, dash) {
             <div class="card-value">${dash.total_alunos}</div>
         </div>
         <div class="card">
-            <div class="card-label">Receita Estimada</div>
+            <div class="card-label">Média Mensal</div>
             <div class="card-value">${brl(dash.receita_mensal)}</div>
         </div>
         <div class="card">
             <div class="card-label">Confirmado — ${escHtml(mesLabel)}</div>
             <div class="card-value">${brl(d.confirmado_mes)}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">A receber — ${escHtml(mesLabel)}</div>
+            <div class="card-value">${brl(d.a_receber)}</div>
         </div>
         <div class="card">
             <div class="card-label">Saldo — ${escHtml(mesLabel)}</div>
@@ -75,9 +80,9 @@ function render(d, dash) {
     </div>
 
     <div class="section">
-        <div class="section-title">Resumo — Últimos 6 Meses</div>
+        <div class="section-title">Resumo — 3 meses anteriores + atual + próximos 3</div>
         <div class="table-wrap"><table>
-            <thead><tr><th>Mês</th><th class="text-right">Receita Confirmada</th><th class="text-right">Despesas</th><th class="text-right">Saldo</th></tr></thead>
+            <thead><tr><th>Mês</th><th class="text-right">Confirmado</th><th class="text-right">A receber</th><th class="text-right">Despesas</th><th class="text-right">Saldo</th></tr></thead>
             <tbody>${resumoRows}</tbody>
         </table></div>
     </div>
