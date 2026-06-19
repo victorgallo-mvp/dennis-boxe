@@ -360,7 +360,8 @@ def api_aluno_pagar(id):
     conn = get_db()
     a    = db_one(conn, 'SELECT * FROM alunos WHERE id=?', [id])
     hoje = date.today().strftime('%Y-%m-%d')
-    prox = calc_proximo(hoje, a['tipo_plano'])
+    base = a['proximo_pagamento'] or hoje  # preserva o ciclo mesmo se pagar adiantado ou atrasado
+    prox = calc_proximo(base, a['tipo_plano'])
     db_exec(conn, 'UPDATE alunos SET ultimo_pagamento=?,proximo_pagamento=? WHERE id=?',
             [hoje, prox.strftime('%Y-%m-%d') if prox else None, id])
     db_exec(conn, 'INSERT INTO pagamentos(aluno_id,aluno_nome,valor,data,confirmado,plano_nome,tipo_plano) VALUES(?,?,?,?,1,?,?)',
