@@ -89,16 +89,20 @@ def payment_status(proximo_str):
     except: return 'indefinido'
 
 STATUS_LABEL = {'vencido':'Vencido','vence_hoje':'Vence hoje',
-                'vence_breve':'Vence em breve','em_dia':'Em dia','indefinido':'Indefinido'}
+                'vence_breve':'Vence em breve','em_dia':'Em dia',
+                'indefinido':'Indefinido','pausado':'Pausado'}
 
 def enrich_aluno(a):
     a = dict(a)
-    if not a.get('proximo_pagamento') and a.get('ultimo_pagamento'):
-        prox = calc_proximo(a['ultimo_pagamento'], a['tipo_plano'])
-        if prox: a['proximo_pagamento'] = prox.strftime('%Y-%m-%d')
-    a['status']       = payment_status(a.get('proximo_pagamento'))
-    a['status_label'] = STATUS_LABEL.get(a['status'], a['status'])
-    # ensure JSON-serialisable dates
+    if a.get('pausado'):
+        a['status']       = 'pausado'
+        a['status_label'] = 'Pausado'
+    else:
+        if not a.get('proximo_pagamento') and a.get('ultimo_pagamento'):
+            prox = calc_proximo(a['ultimo_pagamento'], a['tipo_plano'])
+            if prox: a['proximo_pagamento'] = prox.strftime('%Y-%m-%d')
+        a['status']       = payment_status(a.get('proximo_pagamento'))
+        a['status_label'] = STATUS_LABEL.get(a['status'], a['status'])
     for k in ('ultimo_pagamento', 'proximo_pagamento'):
         if a.get(k): a[k] = str(a[k])[:10]
     return a
@@ -176,6 +180,7 @@ COLUMN_MIGRATIONS = [
     ('planos',     'preco_semestral',  'REAL'),
     ('pagamentos', 'plano_nome',       'TEXT'),
     ('pagamentos', 'tipo_plano',       'TEXT'),
+    ('alunos',     'pausado',          'INTEGER DEFAULT 0'),
 ]
 
 def ensure_column(conn, table, column, coltype):
@@ -252,19 +257,20 @@ def init_db():
 def api_dashboard():
     conn = get_db()
     alunos = [enrich_aluno(a) for a in db_all(conn, 'SELECT * FROM alunos WHERE ativo=1 ORDER BY nome')]
+    ativos = [a for a in alunos if not a.get('pausado')]
     hoje = date.today()
     mes  = f"{hoje.year}-{hoje.month:02d}"
     confirmado = db_val(conn, "SELECT COALESCE(SUM(valor),0) AS v FROM pagamentos WHERE strftime('%Y-%m',data)=? AND confirmado=1", [mes])
     despesas   = db_val(conn, "SELECT COALESCE(SUM(valor),0) AS v FROM despesas WHERE strftime('%Y-%m',data)=?", [mes])
     conn.close()
     return jsonify({
-        'total_alunos':  len(alunos),
-        'receita_mensal': sum(valor_mensal_equivalente(a['valor_mensal'], a['tipo_plano']) for a in alunos),
+        'total_alunos':  len(ativos),
+        'receita_mensal': sum(valor_mensal_equivalente(a['valor_mensal'], a['tipo_plano']) for a in ativos),
         'confirmado_mes': float(confirmado or 0),
         'despesas_mes':   float(despesas or 0),
         'saldo':          float(confirmado or 0) - float(despesas or 0),
-        'vencidos':       [a for a in alunos if a['status'] == 'vencido'],
-        'vence_breve':    [a for a in alunos if a['status'] in ('vence_hoje','vence_breve')],
+        'vencidos':       [a for a in ativos if a['status'] == 'vencido'],
+        'vence_breve':    [a for a in ativos if a['status'] in ('vence_hoje','vence_breve')],
         'hoje':           hoje.isoformat(),
     })
 
@@ -274,14 +280,23 @@ def api_dashboard():
 @app.route('/api/alunos', methods=['GET'])
 def api_alunos():
     conn = get_db()
-    busca = request.args.get('busca','').strip()
-    rows  = db_all(conn,
-        'SELECT * FROM alunos WHERE ativo=1' + (' AND nome LIKE ?' if busca else '') + ' ORDER BY nome',
-        ([f'%{busca}%'] if busca else []))
+    busca  = request.args.get('busca','').strip()
+    status = request.args.get('status','')
+    # pausados só aparecem quando filtro explícito; demais filtros excluem pausados
+    if status == 'pausado':
+        where = 'ativo=1 AND pausado=1'
+        params = []
+    else:
+        where = 'ativo=1 AND (pausado=0 OR pausado IS NULL)'
+        params = []
+    if busca:
+        where += ' AND nome LIKE ?'
+        params.append(f'%{busca}%')
+    rows = db_all(conn, f'SELECT * FROM alunos WHERE {where} ORDER BY nome', params)
     conn.close()
     alunos = [enrich_aluno(a) for a in rows]
-    sf = request.args.get('status','')
-    if sf: alunos = [a for a in alunos if a['status'] == sf]
+    if status and status != 'pausado':
+        alunos = [a for a in alunos if a['status'] == status]
     return jsonify(alunos)
 
 @app.route('/api/alunos/<int:id>', methods=['GET'])
@@ -353,6 +368,21 @@ def api_aluno_pagamentos(id):
     for r in rows:
         r['data'] = str(r['data'])[:10]
     return jsonify(rows)
+
+
+@app.route('/api/alunos/<int:id>/pausar', methods=['POST'])
+def api_aluno_pausar(id):
+    conn = get_db()
+    db_exec(conn, 'UPDATE alunos SET pausado=1 WHERE id=?', [id])
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
+
+@app.route('/api/alunos/<int:id>/reativar', methods=['POST'])
+def api_aluno_reativar(id):
+    conn = get_db()
+    db_exec(conn, 'UPDATE alunos SET pausado=0 WHERE id=?', [id])
+    conn.commit(); conn.close()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/alunos/<int:id>/pagar', methods=['POST'])
@@ -432,14 +462,14 @@ def api_financeiro():
         "WHERE strftime('%Y-%m',p.data)=? AND p.confirmado=1 ORDER BY p.data DESC", [mes])
     a_receber = float(db_val(conn,
         "SELECT COALESCE(SUM(valor_mensal),0) AS v FROM alunos "
-        "WHERE ativo=1 AND strftime('%Y-%m',proximo_pagamento)=?", [mes]) or 0)
+        "WHERE ativo=1 AND (pausado=0 OR pausado IS NULL) AND strftime('%Y-%m',proximo_pagamento)=?", [mes]) or 0)
 
     por_mes = []
     for m in months_window(past=3, future=3):
         futuro = m > hoje_mes
         rec  = 0.0 if futuro else float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM pagamentos WHERE strftime('%Y-%m',data)=? AND confirmado=1",[m]) or 0)
         desp = 0.0 if futuro else float(db_val(conn,"SELECT COALESCE(SUM(valor),0) AS v FROM despesas WHERE strftime('%Y-%m',data)=?",[m]) or 0)
-        prev = float(db_val(conn,"SELECT COALESCE(SUM(valor_mensal),0) AS v FROM alunos WHERE ativo=1 AND strftime('%Y-%m',proximo_pagamento)=?",[m]) or 0)
+        prev = float(db_val(conn,"SELECT COALESCE(SUM(valor_mensal),0) AS v FROM alunos WHERE ativo=1 AND (pausado=0 OR pausado IS NULL) AND strftime('%Y-%m',proximo_pagamento)=?",[m]) or 0)
         y, mm = m.split('-')
         por_mes.append({'mes':m,'label':f"{MONTH_NAMES[mm]}/{y}",'receita':rec,
                         'despesas':desp,'saldo':rec-desp,'previsto':prev,

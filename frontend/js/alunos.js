@@ -23,10 +23,24 @@ function render(alunos) {
         { key:'vence_hoje',  label:'Vence hoje' },
         { key:'em_dia',      label:'Em dia' },
         { key:'indefinido',  label:'Indefinido' },
+        { key:'pausado',     label:'Pausados' },
     ].map(t => `<a href="?${currentBusca ? 'busca='+encodeURIComponent(currentBusca)+'&' : ''}status=${t.key}" class="ftab ${currentStatus===t.key?'ftab-active':''}">${escHtml(t.label)}</a>`).join('');
 
-    const rows = alunos.map(a => `
-        <tr id="row-${a.id}">
+    const rows = alunos.map(a => {
+        const pausado = a.pausado || a.status === 'pausado';
+        const acoes = pausado ? `
+            <button class="btn btn-sm btn-secondary" onclick="reativar(${a.id},'${escHtml(a.nome)}')">Reativar</button>
+            <a href="/aluno-form?id=${a.id}" class="btn btn-sm btn-ghost">Editar</a>
+            <button class="btn btn-sm btn-danger" onclick="deletar(${a.id},'${escHtml(a.nome)}')">✕</button>
+        ` : `
+            <button class="btn btn-sm btn-secondary" onclick="pagar(${a.id},'${escHtml(a.nome)}')">✓ Pago</button>
+            <a href="/aluno-form?id=${a.id}" class="btn btn-sm btn-ghost">Editar</a>
+            <button class="btn btn-sm btn-ghost" onclick="toggleHistorico(${a.id}, this)" title="Histórico de pagamentos">Histórico</button>
+            <button class="btn btn-sm btn-ghost" onclick="pausar(${a.id},'${escHtml(a.nome)}')" title="Pausar mensalidade">Pausar</button>
+            <button class="btn btn-sm btn-danger" onclick="deletar(${a.id},'${escHtml(a.nome)}')">✕</button>
+        `;
+        return `
+        <tr id="row-${a.id}" ${pausado ? 'style="opacity:0.55"' : ''}>
             <td><strong>${escHtml(a.nome)}</strong></td>
             <td>${escHtml(a.plano_nome||'—')}</td>
             <td class="nowrap">${escHtml(a.tipo_plano||'—')}</td>
@@ -37,22 +51,15 @@ function render(alunos) {
             <td>${escHtml(a.horarios||'—')}</td>
             <td class="text-right">${a.frequencia_semana ? Math.round(a.frequencia_semana)+'x' : '—'}</td>
             <td>${badge(a.status, a.status_label)}</td>
-            <td>
-                <div class="actions">
-                    <button class="btn btn-sm btn-secondary" onclick="pagar(${a.id},'${escHtml(a.nome)}')">✓ Pago</button>
-                    <a href="/aluno-form?id=${a.id}" class="btn btn-sm btn-ghost">Editar</a>
-                    <button class="btn btn-sm btn-ghost" onclick="toggleHistorico(${a.id}, this)" title="Histórico de pagamentos">Histórico</button>
-                    <button class="btn btn-sm btn-danger" onclick="deletar(${a.id},'${escHtml(a.nome)}')">✕</button>
-                </div>
-            </td>
+            <td><div class="actions">${acoes}</div></td>
         </tr>
         ${a.observacoes ? `<tr><td></td><td colspan="10" style="padding-top:2px;padding-bottom:8px"><span class="text-muted" style="font-size:12px">${escHtml(a.observacoes)}</span></td></tr>` : ''}
         <tr id="hist-${a.id}" style="display:none">
             <td colspan="11" style="padding:0">
                 <div id="hist-content-${a.id}" style="padding:14px 16px 16px;background:#fafafa;border-bottom:1px solid #e8e8e8"></div>
             </td>
-        </tr>
-    `).join('');
+        </tr>`;
+    }).join('');
 
     document.getElementById('content').innerHTML = `
     <div class="page-header">
@@ -140,6 +147,22 @@ async function pagar(id, nome) {
     try {
         const r = await apiFetch(`/alunos/${id}/pagar`, { method: 'POST' });
         toast(r.message); load();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function pausar(id, nome) {
+    if (!confirm(`Pausar mensalidade de ${nome}?\nO aluno não contabilizará no financeiro enquanto pausado.`)) return;
+    try {
+        await apiFetch(`/alunos/${id}/pausar`, { method: 'POST' });
+        toast(`${nome} pausado.`); load();
+    } catch(e) { toast(e.message, 'error'); }
+}
+
+async function reativar(id, nome) {
+    if (!confirm(`Reativar ${nome}?`)) return;
+    try {
+        await apiFetch(`/alunos/${id}/reativar`, { method: 'POST' });
+        toast(`${nome} reativado.`); load();
     } catch(e) { toast(e.message, 'error'); }
 }
 
